@@ -28,7 +28,9 @@ namespace BillingApplication.ConsoleUI
                 .AddScoped<IRepository<Product>>(sp => (IRepository<Product>)sp.GetRequiredService<IProductRepository>())
                 .AddScoped<ICustomerRepository, CustomerRepository>()
                 .AddScoped<IPaymentMethodRepository, PaymentMethodRepository>()  // ← AÑADIR ESTA LÍNEA
-                                                                                 // Services
+                .AddScoped<IProductService, ProductService>()
+                .AddScoped<ICustomerService, CustomerService>()
+                // Services
                 .AddScoped<IInvoiceService, InvoiceService>()
                 .BuildServiceProvider();
 
@@ -50,44 +52,108 @@ namespace BillingApplication.ConsoleUI
         {
             Console.WriteLine("=== Sistema de Facturación ===");
 
-            while (true)
-            {
-                Console.WriteLine("\nMenú Principal:");
-                Console.WriteLine("1. Crear Factura");
-                Console.WriteLine("2. Listar Facturas");
-                Console.WriteLine("3. Ver Detalle de Factura");
-                Console.WriteLine("4. Listar Productos");
-                Console.WriteLine("5. Listar Clientes");
-                Console.WriteLine("6. Salir");
-                Console.Write("Seleccione una opción: ");
+            using var scope = _serviceProvider.CreateScope();
+            var invoiceService = scope.ServiceProvider.GetRequiredService<IInvoiceService>();
+            var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
+            var customerService = scope.ServiceProvider.GetRequiredService<ICustomerService>();
+            var paymentMethodRepo = scope.ServiceProvider.GetRequiredService<IPaymentMethodRepository>();
+            var productRepo = scope.ServiceProvider.GetRequiredService<IProductRepository>();
 
-                var option = Console.ReadLine();
+            var producto = await productRepo.GetByIdAsync(1);
 
-                switch (option)
+            // Corrección: Usar nombres de propiedades correctos según la definición de Invoice e InvoiceDetail
+            await invoiceService.CreateInvoiceAsync(
+                new Invoice { ClienteId = 1, FormaPagoId = 1, Fecha = DateTime.Now },
+                new List<InvoiceDetail>
                 {
-                    case "1":
-                        await CreateInvoiceAsync();
-                        break;
-                    case "2":
-                        await ListInvoicesAsync();
-                        break;
-                    case "3":
-                        await ShowInvoiceDetailAsync();
-                        break;
-                    case "4":
-                        await ListProductsAsync();
-                        break;
-                    case "5":
-                        await ListCustomersAsync();
-                        break;
-                    case "6":
-                        Console.WriteLine("Saliendo...");
-                        return;
-                    default:
-                        Console.WriteLine("Opción no válida.");
-                        break;
+                    new()
+                    {
+                        ProductoId = 1,
+                        Cantidad = 1,
+                        PrecioUnidad = producto.PrecioUnitario,
+                        Subtotal = 1 * producto.PrecioUnitario
+                    }
                 }
+            );
+
+            // Corrección: Usar nombres de propiedades correctos para Product
+            await productService.CreateProductAsync(new Product
+            {
+                Codigo = "novo",
+                Nombre = "Novo",
+                Descripcion = "NNovo",
+                PrecioUnitario = 10,
+                Stock = 10
+            });
+
+            await customerService.CreateCustomerAsync(new Customer
+            {
+                Nombre = "NovoCliente",
+                Direccion = "Aca",
+                Telefono = "3524553422",
+                Email = "novo@novo.novo"
+            });
+
+            // ... (resto del código sin cambios)
+            productService.CreateProductAsync(new Product { Codigo = "novo", Nombre = "Novo", Descripcion = "NNovo", PrecioUnitario = 10, Stock = 10 });
+            // Corrección de propiedades para Customer
+            await customerService.CreateCustomerAsync(new Customer { Nombre = "NovoCliente", Direccion = "Aca", Telefono = "3524553422", Email = "novo@novo.novo" });
+
+            // Corrección de propiedades para Invoice
+            foreach (var invoice in await invoiceService.GetAllInvoicesAsync())
+            {
+                Console.WriteLine($"#{invoice.Id}: {invoice.NumeroFactura} - {invoice.Fecha:dd/MM/yyyy} - ${invoice.Total}");
             }
+
+            // Corrección de propiedades para Product
+            foreach (var product in await productService.GetAllProductsAsync())
+            {
+                Console.WriteLine($"#{product.Id}: Código: {product.Codigo} Nombre: {product.Nombre} Descripción: {product.Descripcion} PrecioUnitario: {product.PrecioUnitario} Stock: {product.Stock} ");
+            }
+
+            // Corrección de propiedades para Customer
+            foreach (var customer in await customerService.GetAllCustomersAsync())
+            {
+                Console.WriteLine($"#{customer.Id}: Nombre: {customer.Nombre} Dirección: {customer.Direccion} Teléfono: {customer.Telefono} Email: {customer.Email} ");
+            }
+            /* while (true)
+             {
+                 Console.WriteLine("\nMenú Principal:");
+                 Console.WriteLine("1. Crear Factura");
+                 Console.WriteLine("2. Listar Facturas");
+                 Console.WriteLine("3. Ver Detalle de Factura");
+                 Console.WriteLine("4. Listar Productos");
+                 Console.WriteLine("5. Listar Clientes");
+                 Console.WriteLine("6. Salir");
+                 Console.Write("Seleccione una opción: ");
+
+                 var option = Console.ReadLine();
+
+                 switch (option)
+                 {
+                     case "1":
+                         await CreateInvoiceAsync();
+                         break;
+                     case "2":
+                         await ListInvoicesAsync();
+                         break;
+                     case "3":
+                         await ShowInvoiceDetailAsync();
+                         break;
+                     case "4":
+                         await ListProductsAsync();
+                         break;
+                     case "5":
+                         await ListCustomersAsync();
+                         break;
+                     case "6":
+                         Console.WriteLine("Saliendo...");
+                         return;
+                     default:
+                         Console.WriteLine("Opción no válida.");
+                         break;
+                 }
+             }*/
         }
 
         private async Task CreateInvoiceAsync()
