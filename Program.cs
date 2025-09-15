@@ -52,71 +52,7 @@ namespace BillingApplication.ConsoleUI
         {
             Console.WriteLine("=== Sistema de Facturación ===");
 
-            using var scope = _serviceProvider.CreateScope();
-            var invoiceService = scope.ServiceProvider.GetRequiredService<IInvoiceService>();
-            var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
-            var customerService = scope.ServiceProvider.GetRequiredService<ICustomerService>();
-            var paymentMethodRepo = scope.ServiceProvider.GetRequiredService<IPaymentMethodRepository>();
-            var productRepo = scope.ServiceProvider.GetRequiredService<IProductRepository>();
-
-            var producto = await productRepo.GetByIdAsync(1);
-
-            // Corrección: Usar nombres de propiedades correctos según la definición de Invoice e InvoiceDetail
-            await invoiceService.CreateInvoiceAsync(
-                new Invoice { ClienteId = 1, FormaPagoId = 1, Fecha = DateTime.Now },
-                new List<InvoiceDetail>
-                {
-                    new()
-                    {
-                        ProductoId = 1,
-                        Cantidad = 1,
-                        PrecioUnidad = producto.PrecioUnitario,
-                        Subtotal = 1 * producto.PrecioUnitario
-                    }
-                }
-            );
-
-            // Corrección: Usar nombres de propiedades correctos para Product
-            await productService.CreateProductAsync(new Product
-            {
-                Codigo = "novo",
-                Nombre = "Novo",
-                Descripcion = "NNovo",
-                PrecioUnitario = 10,
-                Stock = 10
-            });
-
-            await customerService.CreateCustomerAsync(new Customer
-            {
-                Nombre = "NovoCliente",
-                Direccion = "Aca",
-                Telefono = "3524553422",
-                Email = "novo@novo.novo"
-            });
-
-            // ... (resto del código sin cambios)
-            productService.CreateProductAsync(new Product { Codigo = "novo", Nombre = "Novo", Descripcion = "NNovo", PrecioUnitario = 10, Stock = 10 });
-            // Corrección de propiedades para Customer
-            await customerService.CreateCustomerAsync(new Customer { Nombre = "NovoCliente", Direccion = "Aca", Telefono = "3524553422", Email = "novo@novo.novo" });
-
-            // Corrección de propiedades para Invoice
-            foreach (var invoice in await invoiceService.GetAllInvoicesAsync())
-            {
-                Console.WriteLine($"#{invoice.Id}: {invoice.NumeroFactura} - {invoice.Fecha:dd/MM/yyyy} - ${invoice.Total}");
-            }
-
-            // Corrección de propiedades para Product
-            foreach (var product in await productService.GetAllProductsAsync())
-            {
-                Console.WriteLine($"#{product.Id}: Código: {product.Codigo} Nombre: {product.Nombre} Descripción: {product.Descripcion} PrecioUnitario: {product.PrecioUnitario} Stock: {product.Stock} ");
-            }
-
-            // Corrección de propiedades para Customer
-            foreach (var customer in await customerService.GetAllCustomersAsync())
-            {
-                Console.WriteLine($"#{customer.Id}: Nombre: {customer.Nombre} Dirección: {customer.Direccion} Teléfono: {customer.Telefono} Email: {customer.Email} ");
-            }
-            /* while (true)
+             while (true)
              {
                  Console.WriteLine("\nMenú Principal:");
                  Console.WriteLine("1. Crear Factura");
@@ -153,7 +89,7 @@ namespace BillingApplication.ConsoleUI
                          Console.WriteLine("Opción no válida.");
                          break;
                  }
-             }*/
+             }
         }
 
         private async Task CreateInvoiceAsync()
