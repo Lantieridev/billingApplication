@@ -27,8 +27,8 @@ namespace BillingApplication.ConsoleUI
                 .AddScoped<IProductRepository, ProductRepository>()
                 .AddScoped<IRepository<Product>>(sp => (IRepository<Product>)sp.GetRequiredService<IProductRepository>())
                 .AddScoped<ICustomerRepository, CustomerRepository>()
-                .AddScoped<IPaymentMethodRepository, PaymentMethodRepository>()  // ← AÑADIR ESTA LÍNEA
-                                                                                 // Services
+                .AddScoped<IPaymentMethodRepository, PaymentMethodRepository>()
+                // Services
                 .AddScoped<IInvoiceService, InvoiceService>()
                 .BuildServiceProvider();
 
@@ -96,9 +96,9 @@ namespace BillingApplication.ConsoleUI
 
             using var scope = _serviceProvider.CreateScope();
             var invoiceService = scope.ServiceProvider.GetRequiredService<IInvoiceService>();
-            var productRepo = scope.ServiceProvider.GetRequiredService<IProductRepository>();      // ← CORREGIDO
-            var customerRepo = scope.ServiceProvider.GetRequiredService<ICustomerRepository>();    // ← CORREGIDO
-            var paymentMethodRepo = scope.ServiceProvider.GetRequiredService<IPaymentMethodRepository>();  // ← CORREGIDO
+            var productRepo = scope.ServiceProvider.GetRequiredService<IProductRepository>();
+            var customerRepo = scope.ServiceProvider.GetRequiredService<ICustomerRepository>();
+            var paymentMethodRepo = scope.ServiceProvider.GetRequiredService<IPaymentMethodRepository>();
 
             try
             {
