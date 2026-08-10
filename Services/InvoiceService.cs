@@ -42,16 +42,10 @@ namespace BillingApplication.Services
                 // Calcular totales
                 CalculateInvoiceTotals(invoice, details);
 
-                // Crear factura
-                invoice.Id = await _invoiceRepository.AddAsync(invoice);
-
-                // Agregar detalles y actualizar stock
-                foreach (var detail in details)
-                {
-                    detail.FacturaId = invoice.Id;
-                    await _invoiceRepository.AddInvoiceDetailAsync(detail);
-                    await _invoiceRepository.UpdateStockAsync(detail.ProductoId, detail.Cantidad, "DECREMENT");
-                }
+                // Crear factura + detalles + descuento de stock en una única transacción atómica:
+                // si algo falla a mitad de camino, se hace rollback completo (no queda stock
+                // descontado sin factura registrada, ni factura sin sus detalles).
+                invoice.Id = await _invoiceRepository.CreateInvoiceTransactionAsync(invoice, details);
 
                 return await _invoiceRepository.GetInvoiceWithDetailsAsync(invoice.Id);
             }

@@ -73,6 +73,60 @@ namespace BillingApplication.Data.Repositories
                 commandType: CommandType.StoredProcedure);
         }
 
+        public async Task<int> CreateInvoiceTransactionAsync(Invoice invoice, List<InvoiceDetail> details)
+        {
+            using var connection = _context.CreateConnection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                var invoiceParameters = new DynamicParameters();
+                invoiceParameters.Add("@NumeroFactura", invoice.NumeroFactura);
+                invoiceParameters.Add("@Fecha", invoice.Fecha);
+                invoiceParameters.Add("@ClienteId", invoice.ClienteId);
+                invoiceParameters.Add("@FormaPagoId", invoice.FormaPagoId);
+                invoiceParameters.Add("@Subtotal", invoice.Subtotal);
+                invoiceParameters.Add("@Total", invoice.Total);
+                invoiceParameters.Add("@NuevaFacturaId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                await connection.ExecuteAsync("sp_Facturas_Insert", invoiceParameters,
+                    transaction: transaction, commandType: CommandType.StoredProcedure);
+
+                var invoiceId = invoiceParameters.Get<int>("@NuevaFacturaId");
+
+                foreach (var detail in details)
+                {
+                    var detailParameters = new DynamicParameters();
+                    detailParameters.Add("@FacturaId", invoiceId);
+                    detailParameters.Add("@ArticuloId", detail.ProductoId);
+                    detailParameters.Add("@Cantidad", detail.Cantidad);
+                    detailParameters.Add("@PrecioUnitario", detail.PrecioUnidad);
+                    detailParameters.Add("@Subtotal", detail.Subtotal);
+                    detailParameters.Add("@NuevoDetalleId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                    await connection.ExecuteAsync("sp_DetallesFactura_Insert", detailParameters,
+                        transaction: transaction, commandType: CommandType.StoredProcedure);
+
+                    var stockParameters = new DynamicParameters();
+                    stockParameters.Add("@ArticuloId", detail.ProductoId);
+                    stockParameters.Add("@Cantidad", detail.Cantidad);
+                    stockParameters.Add("@Operacion", "DECREMENT");
+
+                    await connection.ExecuteAsync("sp_Articulos_UpdateStock", stockParameters,
+                        transaction: transaction, commandType: CommandType.StoredProcedure);
+                }
+
+                transaction.Commit();
+                return invoiceId;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
         public async Task<Invoice> GetByIdAsync(int id)
         {
             using var connection = _context.CreateConnection();
