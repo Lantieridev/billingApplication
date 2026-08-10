@@ -263,6 +263,66 @@ namespace BillingApplication.Tests.Repositories
         }
 
         [Fact]
+        public async Task GenerateNextInvoiceNumberAsync_IgnoresMalformedSuffix()
+        {
+            // A number matching the prefix but with a non-numeric suffix (data corruption, or a
+            // format that predates this convention) must be skipped, not crash int.Parse.
+            var (customerId, pmId, _) = await SetupTestDataAsync();
+            var prefijo = $"FACT-{DateTime.Now.Year}-";
+            await _sut.AddAsync(new Invoice { ClienteId = customerId, FormaPagoId = pmId, Fecha = DateTime.Now, NumeroFactura = $"{prefijo}abc", Subtotal = 10, Total = 10 });
+            await _sut.AddAsync(new Invoice { ClienteId = customerId, FormaPagoId = pmId, Fecha = DateTime.Now, NumeroFactura = $"{prefijo}5", Subtotal = 10, Total = 10 });
+
+            var nextNum = await _sut.GenerateNextInvoiceNumberAsync();
+
+            nextNum.Should().Be($"{prefijo}6");
+        }
+
+        [Fact]
+        public async Task GenerateNextInvoiceNumberAsync_PastNinth_OrdersNumerically()
+        {
+            // Regression test for the fixed bug: MAX(NumeroFactura) did a lexicographic string
+            // comparison, so "FACT-2026-9" sorted above "FACT-2026-10" and generation got stuck
+            // reissuing "...-10" forever past the 9th invoice of a year.
+            var (customerId, pmId, _) = await SetupTestDataAsync();
+            var prefijo = $"FACT-{DateTime.Now.Year}-";
+            for (var i = 1; i <= 10; i++)
+            {
+                await _sut.AddAsync(new Invoice { ClienteId = customerId, FormaPagoId = pmId, Fecha = DateTime.Now, NumeroFactura = $"{prefijo}{i}", Subtotal = 10, Total = 10 });
+            }
+
+            var nextNum = await _sut.GenerateNextInvoiceNumberAsync();
+
+            nextNum.Should().Be($"{prefijo}11");
+        }
+
+        [Fact]
+        public async Task CreateInvoiceTransactionAsync_InsufficientStock_ThrowsAndRollsBack()
+        {
+            // Calls the repository directly (bypassing InvoiceService's own pre-check) to exercise
+            // the "AND Stock >= @Cantidad" guard itself: the UPDATE matches zero rows when the
+            // requested quantity exceeds the actual stock, and that must throw and roll back
+            // instead of silently doing nothing.
+            var (customerId, pmId, productId) = await SetupTestDataAsync();
+
+            var invoice = new Invoice { ClienteId = customerId, FormaPagoId = pmId, Fecha = DateTime.Now, NumeroFactura = "INV-STOCKFAIL", Subtotal = 2000, Total = 2000 };
+            var details = new List<InvoiceDetail>
+            {
+                new InvoiceDetail { ProductoId = productId, Cantidad = 200, PrecioUnidad = 10, Subtotal = 2000 } // seeded stock is only 100
+            };
+
+            var action = () => _sut.CreateInvoiceTransactionAsync(invoice, details);
+            await action.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage($"Stock insuficiente para el producto ID {productId}.");
+
+            var exists = await _sut.InvoiceNumberExistsAsync("INV-STOCKFAIL");
+            exists.Should().BeFalse();
+
+            using var connection = _context.CreateConnection();
+            var stock = await connection.ExecuteScalarAsync<int>("SELECT Stock FROM Articulos WHERE Id = @Id", new { Id = productId });
+            stock.Should().Be(100); // unchanged -- the failed update rolled back
+        }
+
+        [Fact]
         public async Task CreateInvoiceTransactionAsync_FailsAndRollsBack()
         {
             var (customerId, pmId, _) = await SetupTestDataAsync();
