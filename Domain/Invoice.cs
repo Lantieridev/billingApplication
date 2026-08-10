@@ -17,7 +17,7 @@ namespace BillingApplication.Domain.Entities
         public decimal Subtotal { get; set; }
         public decimal Total { get; set; }
 
-        // Navigation properties (solo para uso en la aplicación)
+        // Navigation properties (solo para uso en la aplicaciÃ³n)
         public Customer Customer { get; set; } = null!;
         public PaymentMethod PaymentMethod { get; set; } = null!;
         public List<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
