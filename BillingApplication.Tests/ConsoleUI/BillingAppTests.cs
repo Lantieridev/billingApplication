@@ -53,6 +53,47 @@ namespace BillingApplication.Tests.ConsoleUI
         }
 
         [Fact]
+        public async Task RunAsync_EndOfInput_ExitsGracefully()
+        {
+            // _in.ReadLine() returning null (redirected input ran out) used to fall into the
+            // "opción no válida" default branch forever instead of ever returning.
+            var (app, writer) = CreateApp("");
+
+            await app.RunAsync();
+
+            writer.ToString().Should().Contain("Saliendo...");
+        }
+
+        [Fact]
+        public async Task RunAsync_Option1_CreateInvoice_EndOfInputMidFlow_ShowsErrorThenExits()
+        {
+            // GetValidInt hitting EOF (no more lines to read the customer ID from) used to loop
+            // forever re-printing the "entrada no válida" message.
+            var (app, writer) = CreateApp("1\n");
+
+            await app.RunAsync();
+
+            var output = writer.ToString();
+            output.Should().Contain("❌ Error: No se pudo leer la entrada (fin de flujo).");
+            output.Should().Contain("Saliendo...");
+        }
+
+        [Fact]
+        public async Task RunAsync_Option1_CreateInvoice_NonPositiveCustomerId_RetriesUntilValid()
+        {
+            _customerRepoMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<Customer>());
+            _paymentMethodRepoMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<PaymentMethod>());
+            _productRepoMock.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<Product>());
+
+            // "0" and "-1" are both rejected (customer IDs must be >= 1) before "1" is accepted.
+            var (app, writer) = CreateApp("1\n0\n-1\n1\n1\n0\n6\n");
+
+            await app.RunAsync();
+
+            writer.ToString().Should().Contain("❌ Entrada no válida. Por favor, ingrese un número entero.");
+        }
+
+        [Fact]
         public async Task RunAsync_Option6_Exits()
         {
             var (app, writer) = CreateApp("6\n");

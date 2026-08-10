@@ -51,13 +51,20 @@ namespace BillingApplication.ConsoleUI
             _out = writer ?? Console.Out;
         }
 
-        private int GetValidInt(string prompt)
+        private int GetValidInt(string prompt, int minValue = int.MinValue)
         {
             while (true)
             {
                 _out.Write(prompt);
                 var input = _in.ReadLine();
-                if (int.TryParse(input, out int result))
+                if (input == null)
+                {
+                    // End of stream (e.g. redirected/piped input ran out) -- int.TryParse(null, ...)
+                    // fails forever, which used to print the error message and re-prompt in an
+                    // infinite loop instead of ever returning.
+                    throw new EndOfStreamException("No se pudo leer la entrada (fin de flujo).");
+                }
+                if (int.TryParse(input, out int result) && result >= minValue)
                 {
                     return result;
                 }
@@ -81,6 +88,14 @@ namespace BillingApplication.ConsoleUI
                 _out.Write("Seleccione una opción: ");
 
                 var option = _in.ReadLine();
+                if (option == null)
+                {
+                    // End of stream (e.g. redirected/piped input ran out): _in.ReadLine() would
+                    // keep returning null forever, falling into the "opción no válida" default
+                    // case on every iteration -- an infinite loop instead of ever exiting.
+                    _out.WriteLine("Saliendo...");
+                    return;
+                }
 
                 switch (option)
                 {
@@ -129,7 +144,7 @@ namespace BillingApplication.ConsoleUI
                     _out.WriteLine($"{customer.Id}: {customer.Nombre}");
                 }
 
-                int customerId = GetValidInt("ID del Cliente: ");
+                int customerId = GetValidInt("ID del Cliente: ", minValue: 1);
 
                 // Listar formas de pago
                 var paymentMethods = await paymentMethodRepo.GetAllAsync();
@@ -139,7 +154,7 @@ namespace BillingApplication.ConsoleUI
                     _out.WriteLine($"{pm.Id}: {pm.Nombre}");
                 }
 
-                int paymentMethodId = GetValidInt("ID de Forma de Pago: ");
+                int paymentMethodId = GetValidInt("ID de Forma de Pago: ", minValue: 1);
 
                 // Listar productos
                 var products = await productRepo.GetAllAsync();
@@ -152,7 +167,7 @@ namespace BillingApplication.ConsoleUI
                 var details = new List<InvoiceDetail>();
                 while (true)
                 {
-                    int productId = GetValidInt("\nID del Producto (0 para terminar): ");
+                    int productId = GetValidInt("\nID del Producto (0 para terminar): ", minValue: 0);
                     if (productId == 0) break;
 
                     var product = await productRepo.GetByIdAsync(productId);
@@ -162,7 +177,7 @@ namespace BillingApplication.ConsoleUI
                         continue;
                     }
 
-                    int quantity = GetValidInt("Cantidad: ");
+                    int quantity = GetValidInt("Cantidad: ", minValue: 1);
 
                     details.Add(new InvoiceDetail
                     {
@@ -226,7 +241,7 @@ namespace BillingApplication.ConsoleUI
         private async Task ShowInvoiceDetailAsync()
         {
             _out.WriteLine("\n--- Detalle de Factura ---");
-            int invoiceId = GetValidInt("Ingrese el ID de la factura: ");
+            int invoiceId = GetValidInt("Ingrese el ID de la factura: ", minValue: 1);
 
             using var scope = _serviceProvider.CreateScope();
             var invoiceService = scope.ServiceProvider.GetRequiredService<IInvoiceService>();
