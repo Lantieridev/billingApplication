@@ -22,6 +22,8 @@ namespace BillingApplication.Services
         {
             try
             {
+                await ValidateStockAsync(details);
+
                 // Generar número de factura
                 invoice.NumeroFactura = await _invoiceRepository.GenerateNextInvoiceNumberAsync();
 
@@ -44,6 +46,20 @@ namespace BillingApplication.Services
             catch (Exception ex)
             {
                 throw new Exception($"Error creating invoice: {ex.Message}", ex);
+            }
+        }
+
+        private async Task ValidateStockAsync(List<InvoiceDetail> details)
+        {
+            foreach (var detail in details)
+            {
+                var product = await _productRepository.GetByIdAsync(detail.ProductoId);
+
+                if (product == null)
+                    throw new InvalidOperationException($"Producto con ID {detail.ProductoId} no encontrado.");
+
+                if (product.Stock < detail.Cantidad)
+                    throw new InvalidOperationException($"Stock insuficiente para el producto {product.Nombre}. Disponible: {product.Stock}");
             }
         }
 
