@@ -1,16 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 using Dapper;
-using System.Data;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using BillingApplication.Domain.Entities;
 using BillingApplication.Data.Interfaces;
-using System.Runtime.InteropServices;
 
 namespace BillingApplication.Data.Repositories
 {
@@ -26,51 +22,35 @@ namespace BillingApplication.Data.Repositories
         public async Task<int> AddAsync(Invoice invoice)
         {
             using var connection = _context.CreateConnection();
-            var parameters = new DynamicParameters();
+            var sql = @"
+                INSERT INTO Facturas (NumeroFactura, Fecha, ClienteId, FormaPagoId, Subtotal, Total)
+                VALUES (@NumeroFactura, @Fecha, @ClienteId, @FormaPagoId, @Subtotal, @Total);
+                SELECT CAST(SCOPE_IDENTITY() as int)";
 
-            parameters.Add("@NumeroFactura", invoice.NumeroFactura);
-            parameters.Add("@Fecha", invoice.Fecha);
-            parameters.Add("@ClienteId", invoice.ClienteId);
-            parameters.Add("@FormaPagoId", invoice.FormaPagoId);
-            parameters.Add("@Subtotal", invoice.Subtotal);
-            parameters.Add("@Total", invoice.Total);
-            parameters.Add("@NuevaFacturaId", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-            await connection.ExecuteAsync("sp_Facturas_Insert", parameters,
-                commandType: CommandType.StoredProcedure);
-
-            return parameters.Get<int>("@NuevaFacturaId");
+            return await connection.ExecuteScalarAsync<int>(sql, invoice);
         }
 
         public async Task<int> AddInvoiceDetailAsync(InvoiceDetail detail)
         {
             using var connection = _context.CreateConnection();
-            var parameters = new DynamicParameters();
+            var sql = @"
+                INSERT INTO DetallesFactura (FacturaId, ArticuloId, Cantidad, PrecioUnidad, Subtotal)
+                VALUES (@FacturaId, @ProductoId, @Cantidad, @PrecioUnidad, @Subtotal);
+                SELECT CAST(SCOPE_IDENTITY() as int)";
 
-            parameters.Add("@FacturaId", detail.FacturaId);
-            parameters.Add("@ArticuloId", detail.ProductoId);
-            parameters.Add("@Cantidad", detail.Cantidad);
-            parameters.Add("@PrecioUnitario", detail.PrecioUnidad);
-            parameters.Add("@Subtotal", detail.Subtotal);
-            parameters.Add("@NuevoDetalleId", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-            await connection.ExecuteAsync("sp_DetallesFactura_Insert", parameters,
-                commandType: CommandType.StoredProcedure);
-
-            return parameters.Get<int>("@NuevoDetalleId");
+            return await connection.ExecuteScalarAsync<int>(sql, detail);
         }
 
         public async Task UpdateStockAsync(int productId, int quantity, string operation)
         {
+            if (operation != "INCREMENT" && operation != "DECREMENT")
+                throw new ArgumentException("Operation must be 'INCREMENT' or 'DECREMENT'", nameof(operation));
+
             using var connection = _context.CreateConnection();
-            var parameters = new DynamicParameters();
+            var opSql = operation == "INCREMENT" ? "+" : "-";
+            var sql = $"UPDATE Articulos SET Stock = Stock {opSql} @Cantidad WHERE Id = @ArticuloId";
 
-            parameters.Add("@ArticuloId", productId);
-            parameters.Add("@Cantidad", quantity);
-            parameters.Add("@Operacion", operation);
-
-            await connection.ExecuteAsync("sp_Articulos_UpdateStock", parameters,
-                commandType: CommandType.StoredProcedure);
+            await connection.ExecuteAsync(sql, new { ArticuloId = productId, Cantidad = quantity });
         }
 
         public async Task<int> CreateInvoiceTransactionAsync(Invoice invoice, List<InvoiceDetail> details)
@@ -81,40 +61,25 @@ namespace BillingApplication.Data.Repositories
 
             try
             {
-                var invoiceParameters = new DynamicParameters();
-                invoiceParameters.Add("@NumeroFactura", invoice.NumeroFactura);
-                invoiceParameters.Add("@Fecha", invoice.Fecha);
-                invoiceParameters.Add("@ClienteId", invoice.ClienteId);
-                invoiceParameters.Add("@FormaPagoId", invoice.FormaPagoId);
-                invoiceParameters.Add("@Subtotal", invoice.Subtotal);
-                invoiceParameters.Add("@Total", invoice.Total);
-                invoiceParameters.Add("@NuevaFacturaId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var invoiceSql = @"
+                    INSERT INTO Facturas (NumeroFactura, Fecha, ClienteId, FormaPagoId, Subtotal, Total)
+                    VALUES (@NumeroFactura, @Fecha, @ClienteId, @FormaPagoId, @Subtotal, @Total);
+                    SELECT CAST(SCOPE_IDENTITY() as int)";
 
-                await connection.ExecuteAsync("sp_Facturas_Insert", invoiceParameters,
-                    transaction: transaction, commandType: CommandType.StoredProcedure);
-
-                var invoiceId = invoiceParameters.Get<int>("@NuevaFacturaId");
+                var invoiceId = await connection.ExecuteScalarAsync<int>(invoiceSql, invoice, transaction: transaction);
 
                 foreach (var detail in details)
                 {
-                    var detailParameters = new DynamicParameters();
-                    detailParameters.Add("@FacturaId", invoiceId);
-                    detailParameters.Add("@ArticuloId", detail.ProductoId);
-                    detailParameters.Add("@Cantidad", detail.Cantidad);
-                    detailParameters.Add("@PrecioUnitario", detail.PrecioUnidad);
-                    detailParameters.Add("@Subtotal", detail.Subtotal);
-                    detailParameters.Add("@NuevoDetalleId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                    detail.FacturaId = invoiceId;
+                    var detailSql = @"
+                        INSERT INTO DetallesFactura (FacturaId, ArticuloId, Cantidad, PrecioUnidad, Subtotal)
+                        VALUES (@FacturaId, @ProductoId, @Cantidad, @PrecioUnidad, @Subtotal);
+                        SELECT CAST(SCOPE_IDENTITY() as int)";
 
-                    await connection.ExecuteAsync("sp_DetallesFactura_Insert", detailParameters,
-                        transaction: transaction, commandType: CommandType.StoredProcedure);
+                    await connection.ExecuteScalarAsync<int>(detailSql, detail, transaction: transaction);
 
-                    var stockParameters = new DynamicParameters();
-                    stockParameters.Add("@ArticuloId", detail.ProductoId);
-                    stockParameters.Add("@Cantidad", detail.Cantidad);
-                    stockParameters.Add("@Operacion", "DECREMENT");
-
-                    await connection.ExecuteAsync("sp_Articulos_UpdateStock", stockParameters,
-                        transaction: transaction, commandType: CommandType.StoredProcedure);
+                    var stockSql = "UPDATE Articulos SET Stock = Stock - @Cantidad WHERE Id = @ProductoId";
+                    await connection.ExecuteAsync(stockSql, new { Cantidad = detail.Cantidad, ProductoId = detail.ProductoId }, transaction: transaction);
                 }
 
                 transaction.Commit();
@@ -138,7 +103,7 @@ namespace BillingApplication.Data.Repositories
                 INNER JOIN FormasPago pm ON f.FormaPagoId = pm.Id
                 WHERE f.Id = @Id";
 
-            return await connection.QueryFirstOrDefaultAsync<Invoice>(sql, new { Id = id });
+            return (await connection.QueryFirstOrDefaultAsync<Invoice>(sql, new { Id = id }))!;
         }
 
         public async Task<Invoice> GetInvoiceWithDetailsAsync(int id)
@@ -154,8 +119,12 @@ namespace BillingApplication.Data.Repositories
 
             if (invoice != null)
             {
+                // DetallesFactura and Articulos both have a primary key literally named "Id" —
+                // aliasing DetalleFactura's own Id avoids ambiguity in Dapper's splitOn boundary,
+                // which otherwise treats the very first "Id" column (df.Id) as the split point.
                 var details = await connection.QueryAsync<InvoiceDetail, Product, InvoiceDetail>(
-                    @"SELECT df.*, p.*
+                    @"SELECT df.Id AS DetalleId, df.FacturaId, df.ArticuloId AS ProductoId, df.Cantidad, df.PrecioUnidad, df.Subtotal,
+                             p.Id, p.Codigo, p.Nombre, p.Descripcion, p.PrecioUnitario, p.Stock, p.Activo
                       FROM DetallesFactura df
                       INNER JOIN Articulos p ON df.ArticuloId = p.Id
                       WHERE df.FacturaId = @Id",
@@ -170,7 +139,7 @@ namespace BillingApplication.Data.Repositories
                 invoice.InvoiceDetails = details.AsList();
             }
 
-            return invoice;
+            return invoice!;
         }
 
         public async Task<IEnumerable<Invoice>> GetAllAsync()
@@ -218,10 +187,10 @@ namespace BillingApplication.Data.Repositories
 
             var sql = @"
                 UPDATE Facturas 
-                SET NumeroFactura = @InvoiceNumber, 
-                    Fecha = @Date, 
-                    ClienteId = @CustomerId, 
-                    FormaPagoId = @PaymentMethodId, 
+                SET NumeroFactura = @NumeroFactura, 
+                    Fecha = @Fecha, 
+                    ClienteId = @ClienteId, 
+                    FormaPagoId = @FormaPagoId, 
                     Subtotal = @Subtotal, 
                     Total = @Total 
                 WHERE Id = @Id";
@@ -238,3 +207,4 @@ namespace BillingApplication.Data.Repositories
         }
     }
 }
+

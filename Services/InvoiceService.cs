@@ -20,9 +20,19 @@ namespace BillingApplication.Services
 
         public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, List<InvoiceDetail> details)
         {
+            if (details == null || details.Count == 0)
+            {
+                throw new InvalidOperationException("La factura debe tener al menos un detalle.");
+            }
+
             // Validar stock para cada producto
             foreach (var detail in details)
             {
+                if (detail.Cantidad <= 0)
+                {
+                    throw new InvalidOperationException("La cantidad del producto debe ser mayor a cero.");
+                }
+
                 var product = await _productRepository.GetByIdAsync(detail.ProductoId);
                 if (product == null)
                 {
