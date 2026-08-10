@@ -7,7 +7,7 @@ on:
     branches: [billing-console]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,3 +16,8 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet restore
       - run: dotnet build --no-restore --configuration Release
+      # Runs the full suite (unit + integration against a real SQL Server via
+      # Testcontainers, which needs the Docker daemon already available on
+      # ubuntu-latest runners) and enforces the coverage Threshold set in
+      # BillingApplication.Tests.csproj — a coverage regression fails the build.
+      - run: dotnet test --no-build --configuration Release
