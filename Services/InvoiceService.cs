@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BillingApplication.Domain.Entities;
@@ -20,6 +20,20 @@ namespace BillingApplication.Services
 
         public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, List<InvoiceDetail> details)
         {
+            // Validar stock para cada producto
+            foreach (var detail in details)
+            {
+                var product = await _productRepository.GetByIdAsync(detail.ProductoId);
+                if (product == null)
+                {
+                    throw new InvalidOperationException($"Producto con ID {detail.ProductoId} no encontrado.");
+                }
+                if (product.Stock < detail.Cantidad)
+                {
+                    throw new InvalidOperationException($"Stock insuficiente. Disponible: {product.Stock}");
+                }
+            }
+
             try
             {
                 // Generar número de factura
