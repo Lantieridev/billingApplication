@@ -31,7 +31,7 @@ Repositories are injected via `Microsoft.Extensions.DependencyInjection` — no 
 
 ## ⚙️ Setup
 
-1. **Database**: unpack `billingApplicationsql.rar` and run the script against your SQL Server instance to create the `BillingSystem` schema.
+1. **Database**: run `billingApplicationsql.sql` against your SQL Server instance to create the `BillingSystem` schema.
 2. **Connection string**: `appsettings.json` defaults to a local `(localdb)\MSSQLLocalDB` instance — point `ConnectionStrings:DefaultConnection` at your own server if you're not using LocalDB.
 3. **Run**:
    ```powershell
