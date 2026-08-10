@@ -18,7 +18,6 @@ namespace BillingApplication.Services
             _productRepository = productRepository;
         }
 
-        // ... el resto del código permanece igual ...
         public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, List<InvoiceDetail> details)
         {
             try

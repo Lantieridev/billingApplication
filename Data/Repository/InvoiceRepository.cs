@@ -136,16 +136,16 @@ namespace BillingApplication.Data.Repositories
         public async Task<string> GenerateNextInvoiceNumberAsync()
         {
             using var connection = _context.CreateConnection();
-            var parameters = new DynamicParameters();
 
-            parameters.Add("@Prefijo", "FACT");
-            parameters.Add("@NextNumber", dbType: DbType.String, size: 20, direction: ParameterDirection.Output);
+            var ultimoNumero = await connection.QueryFirstOrDefaultAsync<string>(
+                "SELECT MAX(NumeroFactura) AS NumeroFactura FROM Facturas");
 
-            var ultimoNumero = await connection.QueryAsync
-                ("Select MAX(NumeroFactura) AS NumeroFactura FROM Facturas");
+            var prefijo = $"FACT-{DateTime.Now.Year}-";
 
-            return "FACT-2025-"+((int.Parse(ultimoNumero.FirstOrDefault().NumeroFactura.Substring(10)))+1).ToString();
+            if (string.IsNullOrEmpty(ultimoNumero))
+                return $"{prefijo}1";
 
+            return $"{prefijo}{int.Parse(ultimoNumero.Substring(10)) + 1}";
         }
 
         public async Task<bool> InvoiceNumberExistsAsync(string invoiceNumber)
