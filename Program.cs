@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -148,12 +148,6 @@ namespace BillingApplication.ConsoleUI
 
                     Console.Write("Cantidad: ");
                     int quantity = int.Parse(Console.ReadLine());
-
-                    if (product.Stock < quantity)
-                    {
-                        Console.WriteLine($"Stock insuficiente. Disponible: {product.Stock}");
-                        continue;
-                    }
 
                     details.Add(new InvoiceDetail
                     {
