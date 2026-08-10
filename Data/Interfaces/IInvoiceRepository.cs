@@ -16,5 +16,6 @@ namespace BillingApplication.Data.Interfaces
         Task<Invoice> GetInvoiceWithDetailsAsync(int id);
         Task<int> AddInvoiceDetailAsync(InvoiceDetail detail);
         Task UpdateStockAsync(int productId, int quantity, string operation);
+        Task<int> CreateInvoiceTransactionAsync(Invoice invoice, List<InvoiceDetail> details);
     }
 }
