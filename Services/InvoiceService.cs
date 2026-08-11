@@ -87,7 +87,7 @@ namespace BillingApplication.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error creating invoice: {ex.Message}", ex);
+                throw new Exception($"Error al crear la factura: {ex.Message}", ex);
             }
         }
 
