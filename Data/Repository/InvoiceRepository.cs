@@ -44,7 +44,7 @@ namespace BillingApplication.Data.Repositories
         public async Task UpdateStockAsync(int productId, int quantity, string operation)
         {
             if (operation != "INCREMENT" && operation != "DECREMENT")
-                throw new ArgumentException("Operation must be 'INCREMENT' or 'DECREMENT'", nameof(operation));
+                throw new ArgumentException("La operación debe ser 'INCREMENT' o 'DECREMENT'", nameof(operation));
 
             using var connection = _context.CreateConnection();
             var opSql = operation == "INCREMENT" ? "+" : "-";

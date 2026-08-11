@@ -249,7 +249,7 @@ namespace BillingApplication.Tests.Services
 
             // Assert
             await act.Should().ThrowAsync<Exception>()
-                .WithMessage("Error creating invoice: Database error");
+                .WithMessage("Error al crear la factura: Database error");
         }
 
         [Fact]

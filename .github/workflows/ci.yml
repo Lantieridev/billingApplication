@@ -4,7 +4,6 @@ on:
   push:
     branches: [billing-console]
   pull_request:
-    branches: [billing-console]
 
 jobs:
   build-and-test:
