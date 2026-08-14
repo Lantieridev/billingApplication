@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,6 +16,7 @@ namespace BillingApplication.Domain.Entities
         public decimal Subtotal { get; set; }
 
         // Navigation property
-        public Product Product { get; set; }
+        public Product Product { get; set; } = null!;
     }
 }
+

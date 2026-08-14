@@ -1,13 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using Dapper;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using BillingApplication.Domain.Entities;
+using Dapper;
 using BillingApplication.Data.Interfaces;
 
 namespace BillingApplication.Data.Repositories
@@ -24,19 +22,15 @@ namespace BillingApplication.Data.Repositories
         public async Task<Product> GetByIdAsync(int id)
         {
             using var connection = _context.CreateConnection();
-            return await connection.QueryFirstOrDefaultAsync<Product>(
-                "sp_Articulos_GetById",
-                new { Id = id },
-                commandType: System.Data.CommandType.StoredProcedure);
+            var sql = "SELECT * FROM Articulos WHERE Id = @Id AND Activo = 1";
+            return (await connection.QueryFirstOrDefaultAsync<Product>(sql, new { Id = id }))!;
         }
 
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
             using var connection = _context.CreateConnection();
-            return await connection.QueryAsync<Product>(
-                "sp_Articulos_GetAll",
-                new { SoloActivos = 1 },
-                commandType: System.Data.CommandType.StoredProcedure);
+            var sql = "SELECT * FROM Articulos WHERE Activo = 1 ORDER BY Nombre";
+            return await connection.QueryAsync<Product>(sql);
         }
 
         public async Task<int> AddAsync(Product product)
@@ -92,7 +86,7 @@ namespace BillingApplication.Data.Repositories
         {
             using var connection = _context.CreateConnection();
             var sql = "SELECT * FROM Articulos WHERE Codigo = @Code AND Activo = 1";
-            return await connection.QueryFirstOrDefaultAsync<Product>(sql, new { Code = code });
+            return (await connection.QueryFirstOrDefaultAsync<Product>(sql, new { Code = code }))!;
         }
 
         public async Task<IEnumerable<Product>> GetLowStockProductsAsync(int threshold = 10)
@@ -103,3 +97,6 @@ namespace BillingApplication.Data.Repositories
         }
     }
 }
+
+
+

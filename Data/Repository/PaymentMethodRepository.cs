@@ -1,12 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Dapper;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using BillingApplication.Domain.Entities;
+using Dapper;
 using BillingApplication.Data.Interfaces;
 using System.Data;
 
@@ -25,16 +23,14 @@ namespace BillingApplication.Data.Repositories
         {
             using var connection = _context.CreateConnection();
             var sql = "SELECT * FROM FormasPago WHERE Id = @Id AND Activo = 1";
-            return await connection.QueryFirstOrDefaultAsync<PaymentMethod>(sql, new { Id = id });
+            return (await connection.QueryFirstOrDefaultAsync<PaymentMethod>(sql, new { Id = id }))!;
         }
 
         public async Task<IEnumerable<PaymentMethod>> GetAllAsync()
         {
             using var connection = _context.CreateConnection();
-            return await connection.QueryAsync<PaymentMethod>(
-                "sp_FormasPago_GetAll",
-                new { SoloActivos = 1 },
-                commandType: System.Data.CommandType.StoredProcedure);
+            var sql = "SELECT * FROM FormasPago WHERE Activo = 1 ORDER BY Nombre";
+            return await connection.QueryAsync<PaymentMethod>(sql);
         }
 
         public async Task<int> AddAsync(PaymentMethod paymentMethod)
@@ -74,7 +70,11 @@ namespace BillingApplication.Data.Repositories
         {
             using var connection = _context.CreateConnection();
             var sql = "SELECT * FROM FormasPago WHERE Nombre = @Name AND Activo = 1";
-            return await connection.QueryFirstOrDefaultAsync<PaymentMethod>(sql, new { Name = name });
+            return (await connection.QueryFirstOrDefaultAsync<PaymentMethod>(sql, new { Name = name }))!;
         }
     }
 }
+
+
+
+

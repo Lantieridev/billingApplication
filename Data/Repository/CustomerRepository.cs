@@ -1,11 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dapper;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using BillingApplication.Domain.Entities;
 using BillingApplication.Data.Interfaces;
 
@@ -24,7 +22,7 @@ namespace BillingApplication.Data.Repositories
         {
             using var connection = _context.CreateConnection();
             var sql = "SELECT * FROM Clientes WHERE Id = @Id AND Activo = 1";
-            return await connection.QueryFirstOrDefaultAsync<Customer>(sql, new { Id = id });
+            return (await connection.QueryFirstOrDefaultAsync<Customer>(sql, new { Id = id }))!;
         }
 
         public async Task<IEnumerable<Customer>> GetAllAsync()
@@ -98,7 +96,8 @@ namespace BillingApplication.Data.Repositories
         {
             using var connection = _context.CreateConnection();
             var sql = "SELECT * FROM Clientes WHERE Email = @Email AND Activo = 1";
-            return await connection.QueryFirstOrDefaultAsync<Customer>(sql, new { Email = email });
+            return (await connection.QueryFirstOrDefaultAsync<Customer>(sql, new { Email = email }))!;
         }
     }
 }
+

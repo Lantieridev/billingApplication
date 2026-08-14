@@ -11,18 +11,48 @@ namespace BillingApplication.Services
     {
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly IProductRepository _productRepository;  // ← INTERFAZ ESPECÍFICA
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IPaymentMethodRepository _paymentMethodRepository;
 
-        public InvoiceService(IInvoiceRepository invoiceRepository, IProductRepository productRepository)
+        public InvoiceService(
+            IInvoiceRepository invoiceRepository,
+            IProductRepository productRepository,
+            ICustomerRepository customerRepository,
+            IPaymentMethodRepository paymentMethodRepository)
         {
             _invoiceRepository = invoiceRepository;
             _productRepository = productRepository;
+            _customerRepository = customerRepository;
+            _paymentMethodRepository = paymentMethodRepository;
         }
 
         public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, List<InvoiceDetail> details)
         {
+            if (details == null || details.Count == 0)
+            {
+                throw new InvalidOperationException("La factura debe tener al menos un detalle.");
+            }
+
+            var customer = await _customerRepository.GetByIdAsync(invoice.ClienteId);
+            if (customer == null || !customer.Activo)
+            {
+                throw new InvalidOperationException($"Cliente con ID {invoice.ClienteId} no encontrado o inactivo.");
+            }
+
+            var paymentMethod = await _paymentMethodRepository.GetByIdAsync(invoice.FormaPagoId);
+            if (paymentMethod == null || !paymentMethod.Activo)
+            {
+                throw new InvalidOperationException($"Forma de pago con ID {invoice.FormaPagoId} no encontrada o inactiva.");
+            }
+
             // Validar stock para cada producto
             foreach (var detail in details)
             {
+                if (detail.Cantidad <= 0)
+                {
+                    throw new InvalidOperationException("La cantidad del producto debe ser mayor a cero.");
+                }
+
                 var product = await _productRepository.GetByIdAsync(detail.ProductoId);
                 if (product == null)
                 {
@@ -32,6 +62,12 @@ namespace BillingApplication.Services
                 {
                     throw new InvalidOperationException($"Stock insuficiente. Disponible: {product.Stock}");
                 }
+
+                // El precio siempre debe salir del producto persistido, no del payload del
+                // llamador -- hoy el único llamador (la consola) ya lo hace bien, pero la
+                // regla de negocio debe vivir en el service, no depender de que cada llamador
+                // se acuerde de copiarla correctamente.
+                detail.PrecioUnidad = product.PrecioUnitario;
             }
 
             try
@@ -51,7 +87,7 @@ namespace BillingApplication.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error creating invoice: {ex.Message}", ex);
+                throw new Exception($"Error al crear la factura: {ex.Message}", ex);
             }
         }
 

@@ -1,115 +1,82 @@
 USE [master]
 GO
 
-/****** Object:  Database [BillingSystem]    Script Date: 11/9/2025 11:16:45 ******/
-CREATE DATABASE [BillingSystem]
- CONTAINMENT = NONE
- ON  PRIMARY 
-( NAME = N'BillingSystem', FILENAME = N'C:\Users\marti\BillingSystem.mdf' , SIZE = 8192KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
- LOG ON 
-( NAME = N'BillingSystem_log', FILENAME = N'C:\Users\marti\BillingSystem_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
- WITH CATALOG_COLLATION = DATABASE_DEFAULT
+IF DB_ID(N'BillingSystem') IS NULL
+BEGIN
+    CREATE DATABASE [BillingSystem];
+END
 GO
 
-IF (1 = FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'))
-begin
-EXEC [BillingSystem].[dbo].[sp_fulltext_database] @action = 'enable'
-end
+USE [BillingSystem]
 GO
 
-ALTER DATABASE [BillingSystem] SET ANSI_NULL_DEFAULT OFF 
+IF OBJECT_ID(N'dbo.DetallesFactura', N'U') IS NOT NULL DROP TABLE dbo.DetallesFactura;
+IF OBJECT_ID(N'dbo.Facturas', N'U') IS NOT NULL DROP TABLE dbo.Facturas;
+IF OBJECT_ID(N'dbo.Articulos', N'U') IS NOT NULL DROP TABLE dbo.Articulos;
+IF OBJECT_ID(N'dbo.Clientes', N'U') IS NOT NULL DROP TABLE dbo.Clientes;
+IF OBJECT_ID(N'dbo.FormasPago', N'U') IS NOT NULL DROP TABLE dbo.FormasPago;
 GO
 
-ALTER DATABASE [BillingSystem] SET ANSI_NULLS OFF 
+CREATE TABLE dbo.Clientes (
+    Id          INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre      NVARCHAR(150)   NOT NULL,
+    Direccion   NVARCHAR(250)   NULL,
+    Telefono    NVARCHAR(50)    NULL,
+    Email       NVARCHAR(150)   NULL,
+    Activo      BIT             NOT NULL DEFAULT (1)
+);
 GO
 
-ALTER DATABASE [BillingSystem] SET ANSI_PADDING OFF 
+CREATE UNIQUE INDEX UX_Clientes_Email ON dbo.Clientes(Email) WHERE Email IS NOT NULL;
 GO
 
-ALTER DATABASE [BillingSystem] SET ANSI_WARNINGS OFF 
+CREATE TABLE dbo.Articulos (
+    Id              INT IDENTITY(1,1) PRIMARY KEY,
+    Codigo          NVARCHAR(50)    NOT NULL,
+    Nombre          NVARCHAR(150)   NOT NULL,
+    Descripcion     NVARCHAR(500)   NULL,
+    PrecioUnitario  DECIMAL(18,2)   NOT NULL CHECK (PrecioUnitario >= 0),
+    Stock           INT             NOT NULL CHECK (Stock >= 0),
+    Activo          BIT             NOT NULL DEFAULT (1)
+);
 GO
 
-ALTER DATABASE [BillingSystem] SET ARITHABORT OFF 
+CREATE UNIQUE INDEX UX_Articulos_Codigo ON dbo.Articulos(Codigo);
 GO
 
-ALTER DATABASE [BillingSystem] SET AUTO_CLOSE ON 
+CREATE TABLE dbo.FormasPago (
+    Id      INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre  NVARCHAR(100)   NOT NULL,
+    Activo  BIT             NOT NULL DEFAULT (1)
+);
 GO
 
-ALTER DATABASE [BillingSystem] SET AUTO_SHRINK OFF 
+CREATE UNIQUE INDEX UX_FormasPago_Nombre ON dbo.FormasPago(Nombre);
 GO
 
-ALTER DATABASE [BillingSystem] SET AUTO_UPDATE_STATISTICS ON 
+CREATE TABLE dbo.Facturas (
+    Id              INT IDENTITY(1,1) PRIMARY KEY,
+    NumeroFactura   NVARCHAR(50)    NOT NULL,
+    Fecha           DATETIME2       NOT NULL DEFAULT (SYSDATETIME()),
+    ClienteId       INT             NOT NULL REFERENCES dbo.Clientes(Id),
+    FormaPagoId     INT             NOT NULL REFERENCES dbo.FormasPago(Id),
+    Subtotal        DECIMAL(18,2)   NOT NULL CHECK (Subtotal >= 0),
+    Total           DECIMAL(18,2)   NOT NULL CHECK (Total >= 0)
+);
 GO
 
-ALTER DATABASE [BillingSystem] SET CURSOR_CLOSE_ON_COMMIT OFF 
+CREATE UNIQUE INDEX UX_Facturas_NumeroFactura ON dbo.Facturas(NumeroFactura);
 GO
 
-ALTER DATABASE [BillingSystem] SET CURSOR_DEFAULT  GLOBAL 
+CREATE TABLE dbo.DetallesFactura (
+    Id              INT IDENTITY(1,1) PRIMARY KEY,
+    FacturaId       INT             NOT NULL REFERENCES dbo.Facturas(Id),
+    ArticuloId      INT             NOT NULL REFERENCES dbo.Articulos(Id),
+    Cantidad        INT             NOT NULL CHECK (Cantidad > 0),
+    PrecioUnidad    DECIMAL(18,2)   NOT NULL CHECK (PrecioUnidad >= 0),
+    Subtotal        DECIMAL(18,2)   NOT NULL CHECK (Subtotal >= 0)
+);
 GO
 
-ALTER DATABASE [BillingSystem] SET CONCAT_NULL_YIELDS_NULL OFF 
+CREATE INDEX IX_DetallesFactura_FacturaId ON dbo.DetallesFactura(FacturaId);
 GO
-
-ALTER DATABASE [BillingSystem] SET NUMERIC_ROUNDABORT OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET QUOTED_IDENTIFIER OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET RECURSIVE_TRIGGERS OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET  ENABLE_BROKER 
-GO
-
-ALTER DATABASE [BillingSystem] SET AUTO_UPDATE_STATISTICS_ASYNC OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET DATE_CORRELATION_OPTIMIZATION OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET TRUSTWORTHY OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET ALLOW_SNAPSHOT_ISOLATION OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET PARAMETERIZATION SIMPLE 
-GO
-
-ALTER DATABASE [BillingSystem] SET READ_COMMITTED_SNAPSHOT OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET HONOR_BROKER_PRIORITY OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET RECOVERY SIMPLE 
-GO
-
-ALTER DATABASE [BillingSystem] SET  MULTI_USER 
-GO
-
-ALTER DATABASE [BillingSystem] SET PAGE_VERIFY CHECKSUM  
-GO
-
-ALTER DATABASE [BillingSystem] SET DB_CHAINING OFF 
-GO
-
-ALTER DATABASE [BillingSystem] SET FILESTREAM( NON_TRANSACTED_ACCESS = OFF ) 
-GO
-
-ALTER DATABASE [BillingSystem] SET TARGET_RECOVERY_TIME = 60 SECONDS 
-GO
-
-ALTER DATABASE [BillingSystem] SET DELAYED_DURABILITY = DISABLED 
-GO
-
-ALTER DATABASE [BillingSystem] SET ACCELERATED_DATABASE_RECOVERY = OFF  
-GO
-
-ALTER DATABASE [BillingSystem] SET QUERY_STORE = OFF
-GO
-
-ALTER DATABASE [BillingSystem] SET  READ_WRITE 
-GO
-
