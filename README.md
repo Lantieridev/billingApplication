@@ -3,7 +3,7 @@
 ![C#](https://img.shields.io/badge/C%23-.NET_8-purple?style=for-the-badge&logo=csharp)
 ![Dapper](https://img.shields.io/badge/Dapper-Micro--ORM-blue?style=for-the-badge)
 ![SQL Server](https://img.shields.io/badge/SQL_Server-Database-CC2927?style=for-the-badge&logo=microsoftsqlserver)
-![Tests](https://img.shields.io/badge/Tests-58%20passing-brightgreen?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-80%20passing-brightgreen?style=for-the-badge)
 ![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 ![CI](https://img.shields.io/github/actions/workflow/status/Lantieridev/billingApplication/ci.yml?branch=billing-console&style=for-the-badge&label=CI)
@@ -47,7 +47,7 @@ Repositories are injected via `Microsoft.Extensions.DependencyInjection` — no 
 dotnet test
 ```
 
-58 tests: repository integration tests against a real, disposable SQL Server instance via [Testcontainers](https://testcontainers.com/) (requires Docker running locally), plus unit tests for `InvoiceService`'s business logic (total calculation, stock deduction) and the console UI's input-handling loop. **100% line/branch/method coverage**, enforced on every run via `coverlet.msbuild` — a coverage regression fails the build, same as CI.
+80 tests: repository integration tests against a real, disposable SQL Server instance via [Testcontainers](https://testcontainers.com/) (requires Docker running locally), plus unit tests for `InvoiceService`'s business logic (total calculation, stock deduction) and the console UI's input-handling loop. **100% line/branch coverage**, enforced on every run via `coverlet.msbuild` (Domain entities and the console composition root in `Program.cs` are excluded from the gate) — a coverage regression fails the build, same as CI.
 
 ## 📜 Academic Context
 University project focused on the Repository pattern and separation of concerns (Data / Domain / Services) in C#.
